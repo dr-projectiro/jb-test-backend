@@ -20,8 +20,8 @@ dependencies {
     // javalin: minimalistic web server
     compile("io.javalin:javalin:2.4.0")
 
-    // name-machine: realistic human name generator lib
-    compile("org.ajbrown:name-machine:1.1.0")
+    // javafaker: realistic name generator lib
+    compile("com.github.javafaker:javafaker:0.17.2")
 }
 
 tasks.withType<KotlinCompile> {

@@ -1,0 +1,59 @@
+Task: 
+
+1. implement simple http backend providing clients with 'team member' data with some filtering options.
+2. api MUST be paginated.
+
+General decisions: 
+-create simple in-memory list containing the data to serve
+-use one and only entity, TeamMember (no schema)
+
+Data should be generated to fit the following:
+-use human-friendly name generator
+
+Pagination decisions:
+-decouple pagination from querying logic
+-page size is compile-time integer constant
+-content is totally static/constant, so indexing by page is enough (don't use any snapshot tokens)
+
+Api capabilities:
+/team // returns all team memers
+/team?skill=[js, python] // returns all team members with skill js AND python
+/team?project=2 // all team members that are on project with id 2
+/team?holidays=true // all team members that are on holidays
+/team?working=true // all team members that are right now in working hours
+
+
+Response example:
+{
+  "items": [
+    {
+      "skills": [
+        "js",
+        "Angular",
+        "python"
+      ],
+      "manager_id": {
+        "last_name": "Szeptycki",
+        "first_name": "Adam",
+        "id": 22
+      },
+      "on_holidays_till": "iso_date",
+      "free_since": "iso_date",
+      "current_project": {
+        "project_name": 12,
+        "id": 55
+      },
+      "working_hours": {
+        "timezone": "PST",
+        "end": "",
+        "start": ""
+      },
+      "last_name": "Szeptycki",
+      "first_name": "Adam",
+      "id": 2
+    }
+  ],
+  "has_previous": false,
+  "has_next": true,
+  "page": 1
+} 
