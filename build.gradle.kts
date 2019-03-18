@@ -13,8 +13,15 @@ repositories {
 
 dependencies {
     compile(kotlin("stdlib-jdk8"))
-    
-    
+
+    // gson: json <-> pojo converter
+    compile("com.google.code.gson:gson:2.7")
+
+    // javalin: minimalistic web server
+    compile("io.javalin:javalin:2.4.0")
+
+    // name-machine: realistic human name generator lib
+    compile("org.ajbrown:name-machine:1.1.0")
 }
 
 tasks.withType<KotlinCompile> {
