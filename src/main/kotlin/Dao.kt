@@ -49,7 +49,21 @@ class TeamMemberDataGenerator(
         listOf(managersSkill),
         nameGenerator.name().firstName(), nameGenerator.name().lastName(),
         // let's consider our ceo has no manager, has no current project, has no holidays, etc
-        null, null, null, null)
+        null, null, null, null,
+        generateCeoWorkingHours())
+
+    private fun generateCeoWorkingHours() = WorkingHoursEntity(
+        timezones.random(),
+        localIsoTimeFromHours(minWorkingDayStartAtHours),
+        localIsoTimeFromHours(minWorkingDayStartAtHours + maxWorkingDayDurationHours))
+
+    private fun generateRandomWorkingHours(): WorkingHoursEntity {
+        val duration = (minWorkingDayDurationHours..maxWorkingDayDurationHours).random()
+        val workingHoursStart = (minWorkingDayStartAtHours..(maxWorkingDayDurationHours - duration)).random()
+        return WorkingHoursEntity(timezones.random(),
+            localIsoTimeFromHours(workingHoursStart),
+            localIsoTimeFromHours(workingHoursStart + duration))
+    }
 
     private fun generateProjectManagers(
         projects: List<ProjectEntity>,
@@ -62,8 +76,8 @@ class TeamMemberDataGenerator(
                 ceoTeamMember.convertToManagerId(),
                 getRandomDayWithinOneWeekRange(),
                 getRandomDayWithinOneWeekRange(),
-                project
-            )
+                project,
+                generateRandomWorkingHours())
         }
 
     private fun generateCommonTeamMembersForProjects(
@@ -78,8 +92,8 @@ class TeamMemberDataGenerator(
                 projectToProjectManagerMap[assignedProject]!!.convertToManagerId(),
                 getRandomDayWithinOneWeekRange(),
                 getRandomDayWithinOneWeekRange(),
-                assignedProject
-            )
+                assignedProject,
+                generateRandomWorkingHours())
         }
 
     private fun generateProjects(nameGenerator: Faker, projectsCount: Int) =
@@ -123,6 +137,15 @@ data class ProjectEntity(
     @SerializedName("project_name")
     val projectName: String)
 
+data class WorkingHoursEntity(
+    val timezone: String,
+
+    @SerializedName("start")
+    val startLocalIsoTime: String,
+
+    @SerializedName("end")
+    val endLocalIsoTime: String)
+
 data class TeamMemberEntity(
     val id: Int,
 
@@ -138,13 +161,16 @@ data class TeamMemberEntity(
     val managerId: ManagerId?,
 
     @SerializedName("on_holidays_till")
-    val onHolidaysTill: String?,
+    val onHolidaysTillIsoDate: String?,
 
     @SerializedName("free_since")
-    val freeSince: String?,
+    val freeSinceIsoDate: String?,
 
     @SerializedName("current_project")
-    val currentProject: ProjectEntity?) {
+    val currentProject: ProjectEntity?,
+
+    @SerializedName("working_hours")
+    val workingHours: WorkingHoursEntity) {
 
     fun convertToManagerId() = ManagerId(id, firstName, lastName)
 }
