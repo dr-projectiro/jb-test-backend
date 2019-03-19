@@ -4,38 +4,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ThreadLocalRandom
 
-const val ALL_TEAM_MEMBERS_COUNT = 52
-const val ALL_PROJECTS_COUNT = 5
-
-// work time params in hours in 24h format
-const val MIN_WORK_TIME_START = 9
-const val MAX_WORK_TIME_END = 21
-const val MIN_WORK_TIME_DURATION = 4
-const val MAX_WORK_TIME_DURATION = 8
-
-const val MANAGEMENT_SKILL = "Management"
-val ALL_SKILLS = listOf(
-    "Python",
-    "JS",
-    "Angular",
-    "Java",
-    "Kotlin",
-    "Android",
-    "iOS",
-    "Docker"
-)
-
-class Dao {
-
-    private val teamMembers = TeamMemberDataGenerator(
-        nameGenerator = Faker(),
-        allTeamMembersCount = ALL_TEAM_MEMBERS_COUNT,
-        projectsCount = ALL_PROJECTS_COUNT,
-        skills = ALL_SKILLS,
-        managersSkill = MANAGEMENT_SKILL)
+class Dao(private val teamMembers: List<TeamMemberEntity>) {
 
     fun fetchTeamMembers(filterOptions: FilterOptions, currentTime: String) {
-        //ISO_OFFSET_DATE
     }
 }
 
@@ -44,7 +15,12 @@ class TeamMemberDataGenerator(
     private val allTeamMembersCount: Int,
     private val projectsCount: Int,
     private val skills: List<String>,
-    private val managersSkill: String) {
+    private val managersSkill: String,
+    private val timezones: List<String>,
+    private val minWorkingDayDurationHours: Int,
+    private val maxWorkingDayDurationHours: Int,
+    private val minWorkingDayStartAtHours: Int,
+    private val maxWorkingDayStartAtHours: Int) {
     private var memberIdCounter = 0
 
     fun generateData(): List<TeamMemberEntity> {
@@ -59,10 +35,8 @@ class TeamMemberDataGenerator(
         val projectsToProjectManagersMap = generateProjectManagers(projects, ceoTeamMember)
 
         // calculate how much room we have for common team members
-        // common team member = one who is not ceo and is not project manager
-        val commonTeamMembersCount = ALL_TEAM_MEMBERS_COUNT -
-                1 - // ceo is already created
-                projectsToProjectManagersMap.size // project managers are already created
+        // (count ceo and project managers as already created users)
+        val commonTeamMembersCount = allTeamMembersCount - 1 - projectsToProjectManagersMap.size
 
         val commonTeamMembers = generateCommonTeamMembersForProjects(
             projectsToProjectManagersMap, commonTeamMembersCount)
@@ -83,7 +57,7 @@ class TeamMemberDataGenerator(
         projects.associateWith { project ->
             TeamMemberEntity(
                 getNextMemberId(),
-                ALL_SKILLS.threeRandoms().plus(MANAGEMENT_SKILL),
+                skills.threeRandoms().plus(managersSkill),
                 nameGenerator.name().firstName(), nameGenerator.name().lastName(),
                 ceoTeamMember.convertToManagerId(),
                 getRandomDayWithinOneWeekRange(),
