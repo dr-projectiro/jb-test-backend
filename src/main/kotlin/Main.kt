@@ -4,7 +4,7 @@ fun main() {
     println("Starting JetBridge test backend serving team members")
 
     println("Generating data ...")
-    val dao = Dao(generateData())
+    val data = generateData()
 
     println("Starting web server ...")
     TODO("Start web server")

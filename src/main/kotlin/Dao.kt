@@ -4,12 +4,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ThreadLocalRandom
 
-class Dao(private val teamMembers: List<TeamMemberEntity>) {
-
-    fun fetchTeamMembers(filterOptions: FilterOptions, currentTime: String) {
-    }
-}
-
 class TeamMemberDataGenerator(
     private val nameGenerator: Faker,
     private val allTeamMembersCount: Int,
@@ -60,7 +54,8 @@ class TeamMemberDataGenerator(
     private fun generateRandomWorkingHours(): WorkingHoursEntity {
         val duration = (minWorkingDayDurationHours..maxWorkingDayDurationHours).random()
         val workingHoursStart = (minWorkingDayStartAtHours..(maxWorkingDayDurationHours - duration)).random()
-        return WorkingHoursEntity(timezones.random(),
+        return WorkingHoursEntity(
+            timezones.random(),
             localIsoTimeFromHours(workingHoursStart),
             localIsoTimeFromHours(workingHoursStart + duration))
     }
@@ -111,10 +106,34 @@ class TeamMemberDataGenerator(
 }
 
 data class FilterOptions(
-    val onHolidaysNow: Boolean? = null,
-    val workingNow: Boolean? = null,
-    val projectId: Int? = null,
-    val mustHaveAllSkills: List<String>? = null)
+    private val onHolidaysNow: Boolean? = null,
+    private val workingNow: Boolean? = null,
+    private val projectId: Int? = null,
+    private val mustHaveAllSkills: List<String>? = null,
+    private val currentTime: Long) {
+
+    private fun matches(teamMember: TeamMemberEntity) {
+        val criteria = {}
+    }
+
+    private fun matchesProject(teamMember: TeamMemberEntity) = projectId?.let {
+        teamMember.currentProject?.id == it
+    } ?: true
+
+    private fun matchesSkills(teamMember: TeamMemberEntity) = mustHaveAllSkills?.let {
+        teamMember.skills.containsAll(it)
+    } ?: true
+
+    private fun matchesIsWorkingNow(teamMember: TeamMemberEntity) {
+
+
+        TODO("conjunct with matches is on holidays now")
+    }
+
+    private fun matchesIsOnHolidaysNow(teamMember: TeamMemberEntity) {
+        TODO("calculate timestamp which is the end of the last holiday day and compare it with now")
+    }
+}
 
 data class TeamMembersPage(
     val items: List<TeamMemberEntity>,
@@ -161,7 +180,7 @@ data class TeamMemberEntity(
     val managerId: ManagerId?,
 
     @SerializedName("on_holidays_till")
-    val onHolidaysTillIsoDate: String?,
+    val onHolidaysTillIsoDate: String?, // consider holidays include this date
 
     @SerializedName("free_since")
     val freeSinceIsoDate: String?,
