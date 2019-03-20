@@ -1,7 +1,11 @@
 import com.github.javafaker.Faker
 import com.google.gson.annotations.SerializedName
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 
 class TeamMemberDataGenerator(
@@ -53,7 +57,7 @@ class TeamMemberDataGenerator(
 
     private fun generateRandomWorkingHours(): WorkingHoursEntity {
         val duration = (minWorkingDayDurationHours..maxWorkingDayDurationHours).random()
-        val workingHoursStart = (minWorkingDayStartAtHours..(maxWorkingDayDurationHours - duration)).random()
+        val workingHoursStart = (minWorkingDayStartAtHours..maxWorkingDayStartAtHours).random()
         return WorkingHoursEntity(
             timezones.random(),
             localIsoTimeFromHours(workingHoursStart),
@@ -105,33 +109,65 @@ class TeamMemberDataGenerator(
     private fun getNextMemberId() = ++memberIdCounter
 }
 
-data class FilterOptions(
+data class Filter(
     private val onHolidaysNow: Boolean? = null,
     private val workingNow: Boolean? = null,
     private val projectId: Int? = null,
+    private val skillCombinationOperator: BooleanOp?,
     private val mustHaveAllSkills: List<String>? = null,
-    private val currentTime: Long) {
+    private val currentTimeMillis: Long) {
 
-    private fun matches(teamMember: TeamMemberEntity) {
-        val criteria = {}
-    }
+    fun matches(teamMember: TeamMemberEntity) =
+        matchesProject(teamMember) &&
+                matchesSkills(teamMember) &&
+                matchesIsOnHolidaysNow(teamMember) &&
+                matchesIsWorkingNow(teamMember)
 
     private fun matchesProject(teamMember: TeamMemberEntity) = projectId?.let {
         teamMember.currentProject?.id == it
     } ?: true
 
     private fun matchesSkills(teamMember: TeamMemberEntity) = mustHaveAllSkills?.let {
-        teamMember.skills.containsAll(it)
+        when (skillCombinationOperator) {
+            BooleanOp.AND -> teamMember.skills.containsAll(it)
+            BooleanOp.OR -> teamMember.skills.intersect(it).isNotEmpty()
+            null -> true
+        }
     } ?: true
 
-    private fun matchesIsWorkingNow(teamMember: TeamMemberEntity) {
+    private fun matchesIsWorkingNow(teamMember: TeamMemberEntity): Boolean {
+        if (workingNow == null) {
+            return true
+        }
+        val timeZone = TimeZone.getTimeZone(teamMember.workingHours.timezone).toZoneId()
+        val timeZoneOffset = timeZone.rules.getOffset(Instant.ofEpochMilli(currentTimeMillis))
 
+        // current local time in team member timezone
+        val currentLocalTime = LocalDateTime.ofEpochSecond(
+            currentTimeMillis / 1000, 0,
+            timeZoneOffset).toLocalTime()
+        val workDayStart = LocalTime.parse(teamMember.workingHours.endLocalIsoTime)
+        val workDayEnd = LocalTime.parse(teamMember.workingHours.startLocalIsoTime)
+        val isMemberCurrentlyWorking = currentLocalTime.isBefore(workDayEnd) && currentLocalTime.isAfter(workDayStart)
 
-        TODO("conjunct with matches is on holidays now")
+        // team member matches if they work and we want working ones OR they don't work and we want not working ones
+        return workingNow == isMemberCurrentlyWorking
     }
 
-    private fun matchesIsOnHolidaysNow(teamMember: TeamMemberEntity) {
-        TODO("calculate timestamp which is the end of the last holiday day and compare it with now")
+    private fun matchesIsOnHolidaysNow(teamMember: TeamMemberEntity): Boolean {
+        if (onHolidaysNow == null || teamMember.onHolidaysTillIsoDate == null) {
+            return true
+        }
+
+        val timeZone = TimeZone.getTimeZone(teamMember.workingHours.timezone).toZoneId()
+        val timeZoneOffset = timeZone.rules.getOffset(Instant.ofEpochMilli(currentTimeMillis))
+        // current local time in team member timezone
+        val currentLocalDateTime = LocalDateTime.ofEpochSecond(
+            currentTimeMillis / 1000, 0,
+            timeZoneOffset)
+
+        val holidaysLastDay = LocalDateTime.parse(teamMember.onHolidaysTillIsoDate)
+        return currentLocalDateTime.isBefore(holidaysLastDay.plusDays(1))
     }
 }
 
@@ -193,3 +229,5 @@ data class TeamMemberEntity(
 
     fun convertToManagerId() = ManagerId(id, firstName, lastName)
 }
+
+enum class BooleanOp { AND, OR }
