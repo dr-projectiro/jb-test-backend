@@ -5,6 +5,7 @@ import java.lang.IllegalArgumentException
 import java.lang.System.currentTimeMillis
 import com.google.gson.JsonSyntaxException
 
+const val PAGE_SIZE = 5
 
 fun main() {
     println("Starting JetBridge test backend serving team members")
@@ -16,8 +17,10 @@ fun main() {
     Javalin.create().get("/team") { context ->
         try {
             val filter = getFilterFromHttpContext(context)
-            val tempResult = data.filter { filter.matches(it) }
-            TODO("paginate then")
+            val pageNumber = getPageQueryParam(context)
+            val responsePage = extractPage(data.filter { filter.matches(it) }, PAGE_SIZE, pageNumber)
+            context.status(200)
+            context.json(responsePage)
         } catch (ex: IllegalArgumentException) {
             // bad input, let's inform client about details
             context.status(400)
@@ -31,6 +34,42 @@ fun main() {
                         "Please contact nechiporenko.evgeniy@gmail.com for details")
         }
     }.port(15050).start()
+}
+
+fun <T : Any> extractPage(data: List<T>, pageSize: Int, pageNumber: Int): ResponsePage<T> {
+    val pageStartIndex = (pageNumber - 1) * pageSize // inclusive,
+    val pageEndIndex = pageNumber * pageSize // exclusive
+
+    val queriedPageOfData =
+        if (hasPage(data.size, pageSize, pageNumber))
+            // truncate range of queried data to fit actual list bounds
+            data.subList(maxOf(0, pageStartIndex), minOf(data.size, pageEndIndex))
+        else
+            // a page outside of actual bounds was queried
+            emptyList()
+
+    return ResponsePage(
+        queriedPageOfData,
+        hasPage(data.size, pageSize, pageNumber - 1),
+        hasPage(data.size, pageSize, pageNumber + 1),
+        pageNumber)
+}
+
+fun hasPage(dataSize: Int, pageSize: Int, pageNumber: Int): Boolean {
+    val pageStartIndex = (pageNumber - 1) * pageSize // inclusive,
+    val pageEndIndex = pageNumber * pageSize // exclusive
+
+    return pageStartIndex <= dataSize - 1 && pageEndIndex > 0
+}
+
+fun getPageQueryParam(context: Context): Int {
+    return try {
+        context.queryParam("page")?.toInt() ?: 1
+    } catch (ex: NumberFormatException) {
+        throw IllegalArgumentException(
+            "Page must always be an integer; " +
+                    "possible query is: /team?page=2")
+    }
 }
 
 fun getFilterFromHttpContext(context: Context): Filter {
@@ -49,8 +88,9 @@ fun getProjectFilterPart(context: Context): Int? {
     return try {
         context.queryParam("project")?.toInt()
     } catch (ex: NumberFormatException) {
-        throw IllegalArgumentException("Project id must always be an integer; " +
-                "possible query is: /team?project=2")
+        throw IllegalArgumentException(
+            "Project id must always be an integer; " +
+                    "possible query is: /team?project=2")
     }
 }
 
@@ -101,3 +141,9 @@ fun generateData() = TeamMemberDataGenerator(
     minWorkingDayStartAtHours = 9,
     maxWorkingDayStartAtHours = 11
 ).generateData()
+
+data class ResponsePage<T : Any>(
+    val items: List<T>,
+    val hasPrevious: Boolean,
+    val hasNext: Boolean,
+    val page: Int)

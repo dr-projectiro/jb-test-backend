@@ -19,6 +19,8 @@ dependencies {
 
     // javalin: minimalistic web server
     compile("io.javalin:javalin:2.4.0")
+    compile("com.fasterxml.jackson.core:jackson-databind:2.9.6")
+    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.4.1")
 
     // javafaker: realistic name generator lib
     compile("com.github.javafaker:javafaker:0.17.2")
