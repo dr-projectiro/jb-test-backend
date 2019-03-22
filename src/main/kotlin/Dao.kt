@@ -146,16 +146,23 @@ data class Filter(
         val currentLocalTime = LocalDateTime.ofEpochSecond(
             currentTimeMillis / 1000, 0,
             timeZoneOffset).toLocalTime()
-        val workDayStart = LocalTime.parse(teamMember.workingHours.endLocalIsoTime)
-        val workDayEnd = LocalTime.parse(teamMember.workingHours.startLocalIsoTime)
+        val workDayStart = LocalTime.parse(teamMember.workingHours.startLocalIsoTime)
+        val workDayEnd = LocalTime.parse(teamMember.workingHours.endLocalIsoTime)
         val isMemberCurrentlyWorking = currentLocalTime.isBefore(workDayEnd) && currentLocalTime.isAfter(workDayStart)
 
         // team member matches if they work and we want working ones OR they don't work and we want not working ones
-        return workingNow == isMemberCurrentlyWorking
+        return (workingNow == isMemberCurrentlyWorking) && !isTeamMemberOnHolidaysNow(teamMember)
     }
 
     private fun matchesIsOnHolidaysNow(teamMember: TeamMemberEntity): Boolean {
-        if (onHolidaysNow == null || teamMember.onHolidaysTillIsoDate == null) {
+        if (onHolidaysNow == null) {
+            return true
+        }
+        return isTeamMemberOnHolidaysNow(teamMember)
+    }
+
+    private fun isTeamMemberOnHolidaysNow(teamMember: TeamMemberEntity): Boolean {
+        if (teamMember.onHolidaysTillIsoDate == null) {
             return true
         }
 

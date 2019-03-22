@@ -21,7 +21,7 @@ fun <T> List<T>.threeRandoms(): List<T> =
 fun localIsoTimeFromHours(localHoursIn24Format: Int) =
     LocalTime.of(localHoursIn24Format, 0).format(DateTimeFormatter.ISO_TIME)
 
-fun matchesJsonSkillArray(str: String) = str.matches(Regex("\\[\"\\w+\"(, \"\\w+\")*]"))
+fun matchesJsonSkillArray(str: String) = str.matches(Regex("\\[\"\\w+\"(, ?\"\\w+\")*]"))
 
 fun matchesSkill(str: String) = str.matches(Regex("\\w+"))
 
