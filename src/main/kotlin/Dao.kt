@@ -5,6 +5,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 
@@ -112,7 +113,7 @@ class TeamMemberDataGenerator(
 data class Filter(
     private val onHolidaysNow: Boolean? = null,
     private val workingNow: Boolean? = null,
-    private val projectId: Int? = null,
+    private val projects: List<Int>? = null,
     private val skillCombinationOperator: BooleanOp?,
     private val mustHaveAllSkills: List<String>? = null,
     private val currentTimeMillis: Long) {
@@ -123,9 +124,8 @@ data class Filter(
                 matchesIsOnHolidaysNow(teamMember) &&
                 matchesIsWorkingNow(teamMember)
 
-    private fun matchesProject(teamMember: TeamMemberEntity) = projectId?.let {
-        teamMember.currentProject?.id == it
-    } ?: true
+    private fun matchesProject(teamMember: TeamMemberEntity) =
+        projects?.contains(teamMember.currentProject?.id) ?: true
 
     private fun matchesSkills(teamMember: TeamMemberEntity) = mustHaveAllSkills?.let {
         when (skillCombinationOperator) {
@@ -162,12 +162,12 @@ data class Filter(
         val timeZone = TimeZone.getTimeZone(teamMember.workingHours.timezone).toZoneId()
         val timeZoneOffset = timeZone.rules.getOffset(Instant.ofEpochMilli(currentTimeMillis))
         // current local time in team member timezone
-        val currentLocalDateTime = LocalDateTime.ofEpochSecond(
+        val currentLocalDate = LocalDateTime.ofEpochSecond(
             currentTimeMillis / 1000, 0,
-            timeZoneOffset)
+            timeZoneOffset).toLocalDate()
 
-        val holidaysLastDay = LocalDateTime.parse(teamMember.onHolidaysTillIsoDate)
-        return currentLocalDateTime.isBefore(holidaysLastDay.plusDays(1))
+        val holidaysLastDay = LocalDate.parse(teamMember.onHolidaysTillIsoDate, ISO_LOCAL_DATE)
+        return currentLocalDate.isBefore(holidaysLastDay.plusDays(1))
     }
 }
 

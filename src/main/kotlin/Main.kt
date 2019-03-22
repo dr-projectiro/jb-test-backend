@@ -5,7 +5,7 @@ import java.lang.IllegalArgumentException
 import java.lang.System.currentTimeMillis
 import com.google.gson.JsonSyntaxException
 
-const val PAGE_SIZE = 5
+const val PAGE_SIZE = 8
 
 fun main() {
     println("Starting JetBridge test backend serving team members")
@@ -19,6 +19,7 @@ fun main() {
             val filter = getFilterFromHttpContext(context)
             val pageNumber = getPageQueryParam(context)
             val responsePage = extractPage(data.filter { filter.matches(it) }, PAGE_SIZE, pageNumber)
+            Thread.sleep(400) // emulate our API is slow so Android app could show some animations
             context.status(200)
             context.json(responsePage)
         } catch (ex: IllegalArgumentException) {
@@ -42,10 +43,10 @@ fun <T : Any> extractPage(data: List<T>, pageSize: Int, pageNumber: Int): Respon
 
     val queriedPageOfData =
         if (hasPage(data.size, pageSize, pageNumber))
-            // truncate range of queried data to fit actual list bounds
+        // truncate range of queried data to fit actual list bounds
             data.subList(maxOf(0, pageStartIndex), minOf(data.size, pageEndIndex))
         else
-            // a page outside of actual bounds was queried
+        // a page outside of actual bounds was queried
             emptyList()
 
     return ResponsePage(
@@ -84,9 +85,9 @@ fun getFilterFromHttpContext(context: Context): Filter {
         currentTimeMillis())
 }
 
-fun getProjectFilterPart(context: Context): Int? {
+fun getProjectFilterPart(context: Context): List<Int>? {
     return try {
-        context.queryParam("project")?.toInt()
+        context.queryParam("project")?.let { convertFromJsonIntArray(it) }
     } catch (ex: NumberFormatException) {
         throw IllegalArgumentException(
             "Project id must always be an integer; " +
@@ -113,7 +114,7 @@ fun getSkillsFilterPart(context: Context): Pair<List<String>, BooleanOp?> {
         }
 
         // there are several skill query params (/team?skill=a&skill=b&skill=c)
-        if (!skillParams.all { matchesSkill(it) }) {
+        if (skillParams.all { matchesSkill(it) }) {
             // or we have many 'skill' query param, each is skill string
             return Pair(skillParams, BooleanOp.AND)
         }
@@ -131,14 +132,14 @@ fun badSkillFormatException() = IllegalArgumentException(
 
 fun generateData() = TeamMemberDataGenerator(
     nameGenerator = Faker(),
-    allTeamMembersCount = 52,
-    projectsCount = 6,
+    allTeamMembersCount = 82,
+    projectsCount = 8,
     skills = listOf("Python", "JS", "Angular", "Java", "Kotlin", "Android", "iOS", "Docker"),
     managersSkill = "Management",
-    timezones = listOf("PST", "IST"),
+    timezones = listOf("UTC", "EST", "America/New_York", "America/Winnipeg", "America/Toronto", "Africa/Tunis", "Europe/Paris"),
     minWorkingDayDurationHours = 5,
     maxWorkingDayDurationHours = 11,
-    minWorkingDayStartAtHours = 9,
+    minWorkingDayStartAtHours = 7,
     maxWorkingDayStartAtHours = 11
 ).generateData()
 
