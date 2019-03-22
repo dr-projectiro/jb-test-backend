@@ -223,7 +223,7 @@ data class TeamMemberEntity(
     val freeSinceIsoDate: String?,
 
     @JsonProperty("current_project")
-    val currentProject: ProjectEntity?,
+    var currentProject: ProjectEntity?,
 
     @JsonProperty("working_hours")
     val workingHours: WorkingHoursEntity) {

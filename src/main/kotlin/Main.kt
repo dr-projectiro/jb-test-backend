@@ -14,27 +14,72 @@ fun main() {
     val data = generateData()
 
     println("Starting web server ...")
-    Javalin.create().get("/team") { context ->
-        try {
-            val filter = getFilterFromHttpContext(context)
-            val pageNumber = getPageQueryParam(context)
-            val responsePage = extractPage(data.filter { filter.matches(it) }, PAGE_SIZE, pageNumber)
-            Thread.sleep(400) // emulate our API is slow so Android app could show some animations
-            context.status(200)
-            context.json(responsePage)
-        } catch (ex: IllegalArgumentException) {
-            // bad input, let's inform client about details
-            context.status(400)
-            context.result("Bad request, details: ${ex.message}")
-        } catch (ex: Throwable) {
-            // server-side exception/error
-            ex.printStackTrace()
-            context.status(500)
-            context.result(
-                "Internal server error. " +
-                        "Please contact nechiporenko.evgeniy@gmail.com for details")
+    Javalin.create()
+        .get("/team") { context -> handleGetTeam(data, context) }
+        .put("/team/:team-member-id/project") { context -> handleChangeProject(data, context) }
+        .port(15050).start()
+}
+
+fun handleChangeProject(data: List<TeamMemberEntity>, context: Context) {
+    try {
+        val newProjectId = context.body().toInt()
+        val teamMemberId = context.pathParam("team-member-id").toInt()
+        // check projectId is valid
+        val project = synchronized(data) {
+            data.map { it.currentProject }.firstOrNull { it?.id == newProjectId }
         }
-    }.port(15050).start()
+        if (project == null) {
+            context.status(400)
+            context.result("Invalid project id: $newProjectId")
+            return
+        }
+        // check team member id is valid
+        // (no need to use synchronized here as we're addressing final 'properly published' data)
+        val teamMember = data.firstOrNull { it.id == teamMemberId }
+        if (teamMember == null) {
+            context.status(400)
+            context.result("Invalid team member id: $teamMemberId")
+            return
+        }
+        // change project
+        synchronized(data) {
+            teamMember.currentProject = project
+        }
+        context.status(200)
+        context.json(true)
+    } catch (ex: IllegalArgumentException) {
+        context.status(400)
+        context.result("Body must contain target project valid id (int)")
+    } catch (t: Throwable) {
+        handleServerSideError(context, t)
+    }
+
+}
+
+fun handleGetTeam(data: List<TeamMemberEntity>, context: Context) {
+    try {
+        val filter = getFilterFromHttpContext(context)
+        val pageNumber = getPageQueryParam(context)
+        val responsePage =
+            extractPage(synchronized(data) { data.filter { filter.matches(it) } }, PAGE_SIZE, pageNumber)
+        context.status(200)
+        context.json(responsePage)
+    } catch (ex: IllegalArgumentException) {
+        // bad input, let's inform client about details
+        context.status(400)
+        context.result("Bad request, details: ${ex.message}")
+    } catch (t: Throwable) {
+        handleServerSideError(context, t)
+    }
+
+}
+
+fun handleServerSideError(context: Context, t: Throwable) {
+    t.printStackTrace()
+    context.status(500)
+    context.result(
+        "Internal server error. " +
+                "Please contact nechiporenko.evgeniy@gmail.com for details")
 }
 
 fun <T : Any> extractPage(data: List<T>, pageSize: Int, pageNumber: Int): ResponsePage<T> {
@@ -136,7 +181,9 @@ fun generateData() = TeamMemberDataGenerator(
     projectsCount = 8,
     skills = listOf("Python", "JS", "Angular", "Java", "Kotlin", "Android", "iOS", "Docker"),
     managersSkill = "Management",
-    timezones = listOf("UTC", "EST", "America/New_York", "America/Winnipeg", "America/Toronto", "Africa/Tunis", "Europe/Paris"),
+    timezones = listOf(
+        "UTC", "EST", "America/New_York", "America/Winnipeg",
+        "America/Toronto", "Africa/Tunis", "Europe/Paris"),
     minWorkingDayDurationHours = 5,
     maxWorkingDayDurationHours = 11,
     minWorkingDayStartAtHours = 7,
