@@ -26,6 +26,19 @@ dependencies {
     compile("com.github.javafaker:javafaker:0.17.2")
 }
 
+tasks.withType<Jar> {
+    baseName = "${project.name}"
+
+    configurations["compileClasspath"].forEach { file: File ->
+        from(zipTree(file.absoluteFile))
+    }
+
+    manifest {
+        attributes["Main-Class"] = "MainKt"
+    }
+}
+
+
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
